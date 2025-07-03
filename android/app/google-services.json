@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "910152997717",
+    "project_id": "aakashavani-82310",
+    "storage_bucket": "aakashavani-82310.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:910152997717:android:1688ee4d71257b1edc2ddc",
+        "android_client_info": {
+          "package_name": "com.example.aakashavani"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDW265K7OuYkyTOrGRqujkq0ulHpRRW8rY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
