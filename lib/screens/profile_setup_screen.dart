@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'chats_screen.dart';
+
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -31,12 +33,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       return;
     }
 
-    // You can now use name + _image to send to backend or next screen
-    print("Name: $name");
-    print("Image path: ${_image?.path}");
+    // Optionally: store name and image to backend or local storage here
 
-    // Navigate or save data here
+    // Navigate to Chats screen
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const ChatsScreen()),
+    );
   }
+
 
   @override
   Widget build(BuildContext context) {
