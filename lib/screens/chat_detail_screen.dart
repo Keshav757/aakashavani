@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/sent_message_bubble.dart';
 import '../widgets/received_message_bubble.dart';
+import 'user_profile_screen.dart'; // Import the profile screen
 
 class ChatDetailScreen extends StatefulWidget {
   final String name;
@@ -40,16 +41,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            CircleAvatar(
-              backgroundImage:
-                  widget.profileUrl != null ? NetworkImage(widget.profileUrl!) : null,
-              child: widget.profileUrl == null ? const Icon(Icons.person) : null,
-            ),
-            const SizedBox(width: 10),
-            Text(widget.name),
-          ],
+        title: GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => UserProfileScreen(
+                  name: widget.name,
+                  profileUrl: widget.profileUrl,
+                ),
+              ),
+            );
+          },
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundImage: widget.profileUrl != null
+                    ? NetworkImage(widget.profileUrl!)
+                    : null,
+                child: widget.profileUrl == null
+                    ? const Icon(Icons.person)
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Text(widget.name),
+            ],
+          ),
         ),
       ),
       body: Column(
