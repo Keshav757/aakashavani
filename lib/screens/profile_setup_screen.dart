@@ -41,37 +41,58 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Profile Setup")),
+      appBar: AppBar(centerTitle: true,title: const Text("Profile info")),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
-          children: [
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+            const SizedBox(height: 20),
+            const Text(
+                "Please provide your name and an optional profile photo",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            const SizedBox(height: 20),
             GestureDetector(
-              onTap: _pickImage,
-              child: CircleAvatar(
-                radius: 50,
+                onTap: _pickImage,
+                child: CircleAvatar(
+                radius: 55,
+                backgroundColor: Colors.grey[300],
                 backgroundImage: _image != null ? FileImage(_image!) : null,
                 child: _image == null
-                    ? const Icon(Icons.camera_alt, size: 30)
+                    ? const Icon(Icons.add_a_photo, size: 30, color: Colors.grey)
                     : null,
-              ),
+                ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 30),
             TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: "Enter your name",
-                border: OutlineInputBorder(),
-              ),
+                controller: _nameController,
+                maxLength: 25,
+                decoration: const InputDecoration(
+                labelText: "Your name",
+                border: UnderlineInputBorder(),
+                suffixIcon: Icon(Icons.emoji_emotions_outlined),
+                ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _onContinue,
-              child: const Text("Continue"),
+            const Spacer(),
+            SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: _onContinue,
+                child: const Text("Next"),
+                ),
             ),
-          ],
+            ],
         ),
-      ),
+        ),
+
     );
   }
 }
