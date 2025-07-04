@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../screens/chat_detail_screen.dart';
 
 class ChatTile extends StatelessWidget {
   final String name;
@@ -19,6 +20,17 @@ class ChatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatDetailScreen(
+              name: name,
+              profileUrl: profileUrl,
+            ),
+          ),
+        );
+      },
       leading: CircleAvatar(
         backgroundImage: profileUrl != null ? NetworkImage(profileUrl!) : null,
         child: profileUrl == null ? const Icon(Icons.person) : null,
