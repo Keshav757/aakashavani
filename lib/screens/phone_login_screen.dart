@@ -145,7 +145,8 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
                 : ElevatedButton(
                     onPressed: _isOtpSent ? _verifyOtp : _sendOtp,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.amber,
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                       textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
