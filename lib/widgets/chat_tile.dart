@@ -6,15 +6,15 @@ class ChatTile extends StatelessWidget {
   final String time;
   final bool isUnread;
   final String? imageUrl; 
-  final VoidCallback? onTap;// ✅ Add this line
-
+  final VoidCallback? onTap;
+  
   const ChatTile({
     super.key,
     required this.name,
     required this.lastMessage,
     required this.time,
     this.isUnread = false,
-    this.imageUrl, // ✅ Add this line
+    this.imageUrl, 
     this.onTap,
   });
 
@@ -36,14 +36,35 @@ class ChatTile extends StatelessWidget {
         name,
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
-      subtitle: Text(lastMessage),
-      trailing: Text(
-        time,
+      subtitle: Text(
+        lastMessage,
         style: TextStyle(
-          fontSize: 12,
-          color: isUnread ? Colors.green : Colors.grey,
+          fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
+          color: isUnread ? Colors.black : Colors.grey[700],
         ),
       ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            time,
+            style: TextStyle(
+              fontSize: 12,
+              color: isUnread ? Colors.green : Colors.grey,
+              fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          if (isUnread)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: CircleAvatar(
+                radius: 6,
+                backgroundColor: Colors.green,
+              ),
+            ),
+        ],
+      ),
+
     );
   }
 }

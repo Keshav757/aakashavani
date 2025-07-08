@@ -1,7 +1,10 @@
+// === UPDATED ChatDetailScreen ===
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class ChatDetailScreen extends StatelessWidget {
-  final String userId;
+class ChatDetailScreen extends StatefulWidget {
+  final String userId; // receiver ID
   final String userName;
   final String userImage;
   final String userPhone;
@@ -14,44 +17,178 @@ class ChatDetailScreen extends StatelessWidget {
     required this.userPhone,
   });
 
- @override
+  @override
+  State<ChatDetailScreen> createState() => _ChatDetailScreenState();
+}
+
+class _ChatDetailScreenState extends State<ChatDetailScreen> {
+  final TextEditingController _messageController = TextEditingController();
+  final currentUser = FirebaseAuth.instance.currentUser;
+
+  String _getChatId(String uid1, String uid2) {
+    return uid1.compareTo(uid2) < 0 ? '$uid1\_$uid2' : '$uid2\_$uid1';
+  }
+
+  void _sendMessage() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final text = _messageController.text.trim();
+    if (text.isEmpty || currentUser == null) return;
+
+    final chatId = _getChatId(currentUser.uid, widget.userId);
+    final timestamp = FieldValue.serverTimestamp();
+
+    await FirebaseFirestore.instance
+      .collection('chats')
+      .doc(chatId)
+      .collection('messages')
+      .add({
+        'text': text,
+        'senderId': currentUser.uid,
+        'receiverId': widget.userId,
+        'timestamp': timestamp,
+        'isRead': false, // 👈 Add this
+      });
+
+    _messageController.clear();
+  }
+
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final currentUser = FirebaseAuth.instance.currentUser;
+
+    if (currentUser == null) {
+      return const Scaffold(
+        body: Center(child: Text("User not logged in")),
+      );
+    }
+
+    final chatId = _getChatId(currentUser.uid, widget.userId);
+
+      return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
             CircleAvatar(
-              backgroundImage: userImage.isNotEmpty ? NetworkImage(userImage) : null,
-              child: userImage.isEmpty ? const Icon(Icons.person) : null,
+              backgroundImage: widget.userImage.isNotEmpty
+                  ? NetworkImage(widget.userImage)
+                  : null,
+              child: widget.userImage.isEmpty ? const Icon(Icons.person) : null,
             ),
             const SizedBox(width: 10),
-            Text(userName),
+            Text(widget.userName),
           ],
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Displaying the user's name and phone number
-            Text(
-              "Name: $userName",
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      body: Column(
+        children: [
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('chats')
+                  .doc(chatId)
+                  .collection('messages')
+                  .orderBy('timestamp', descending: false)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final messages = snapshot.data!.docs;
+
+                // ✅ Mark received messages as read
+                for (var msg in messages) {
+                  final data = msg.data() as Map<String, dynamic>?;
+                  if (data == null) continue;
+
+                  final isMe = data['senderId'] == currentUser.uid;
+                  final isForMe = data['receiverId'] == currentUser.uid;
+                  final isRead = data.containsKey('isRead') ? data['isRead'] : false;
+
+                  if (isForMe && !isRead) {
+                    msg.reference.update({'isRead': true});
+                  }
+                }
+
+
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(10),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final msg = messages[index];
+                    final isMe = msg['senderId'] == currentUser.uid;
+                    final timestamp = msg['timestamp'] as Timestamp?;
+                    final time = timestamp != null
+                        ? TimeOfDay.fromDateTime(timestamp.toDate()).format(context)
+                        : '';
+
+                    return Align(
+                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        padding: const EdgeInsets.all(10),
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isMe ? Colors.green[100] : Colors.grey[300],
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          crossAxisAlignment:
+                              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              msg['text'],
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              time,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
-            const SizedBox(height: 10),
-            Text(
-              "Phone: $userPhone",
-              style: const TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            color: Colors.grey[100],
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    decoration: const InputDecoration(
+                      hintText: "Type a message",
+                      border: InputBorder.none,
+                    ),
+                    onSubmitted: (_) => _sendMessage(),
+                    textInputAction: TextInputAction.send,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send, color: Colors.green),
+                  onPressed: _sendMessage,
+                )
+              ],
             ),
-            const SizedBox(height: 20),
-            const Text("Chat messages will go here"),
-          ],
-        ),
+          )
+        ],
       ),
     );
   }
 }
-
 
 // default $targetEntity1;
 // default $targetEntity2;
