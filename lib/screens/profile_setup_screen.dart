@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import '../firebase_services/profile_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -12,6 +14,7 @@ class ProfileSetupScreen extends StatefulWidget {
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final TextEditingController _nameController = TextEditingController();
   File? _image;
+  bool _isSaving = false;
 
   Future<void> _pickImage() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
@@ -22,8 +25,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     }
   }
 
-  void _onContinue() {
-    String name = _nameController.text.trim();
+  void _onContinue() async {
+    final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please enter a name")),
@@ -31,68 +34,86 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       return;
     }
 
-    // You can now use name + _image to send to backend or next screen
-    print("Name: $name");
-    print("Image path: ${_image?.path}");
+    if (FirebaseAuth.instance.currentUser == null) {
+      await FirebaseAuth.instance.signInAnonymously();
+    }
 
-    // Navigate or save data here
+    setState(() => _isSaving = true);
+    final service = ProfileService();
+    String? imageUrl;
+
+    if (_image != null) {
+      imageUrl = await service.uploadProfileImage(_image!);
+    }
+
+    try {
+      await service.saveUserProfile(name: name, imageUrl: imageUrl);
+      Navigator.pushReplacementNamed(context, '/chats');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Failed to save profile")),
+      );
+    } finally {
+      setState(() => _isSaving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(centerTitle: true,title: const Text("Profile info")),
+      appBar: AppBar(centerTitle: true, title: const Text("Profile info")),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
             const SizedBox(height: 20),
             const Text(
-                "Please provide your name and an optional profile photo",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16, color: Colors.grey),
+              "Please provide your name and an optional profile photo",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 20),
             GestureDetector(
-                onTap: _pickImage,
-                child: CircleAvatar(
+              onTap: _pickImage,
+              child: CircleAvatar(
                 radius: 55,
                 backgroundColor: Colors.grey[300],
                 backgroundImage: _image != null ? FileImage(_image!) : null,
                 child: _image == null
                     ? const Icon(Icons.add_a_photo, size: 30, color: Colors.grey)
                     : null,
-                ),
+              ),
             ),
             const SizedBox(height: 30),
             TextField(
-                controller: _nameController,
-                maxLength: 25,
-                decoration: const InputDecoration(
+              controller: _nameController,
+              maxLength: 25,
+              decoration: const InputDecoration(
                 labelText: "Your name",
                 border: UnderlineInputBorder(),
                 suffixIcon: Icon(Icons.emoji_emotions_outlined),
-                ),
+              ),
             ),
             const Spacer(),
             SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isSaving ? null : _onContinue,
                 style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
+                  shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(25),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                onPressed: _onContinue,
-                child: const Text("Next"),
-                ),
+                child: _isSaving
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text("Next"),
+              ),
             ),
-            ],
+          ],
         ),
-        ),
-
+      ),
     );
   }
 }
