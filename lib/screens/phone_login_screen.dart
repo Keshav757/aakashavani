@@ -1,10 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import './profile_setup_screen.dart'; // ✅ fixed semicolon
+import './profile_setup_screen.dart';
+import './chats_screen.dart'; 
 
 class PhoneLoginScreen extends StatefulWidget {
-  const PhoneLoginScreen({Key? key}) : super(key: key);
+  const PhoneLoginScreen({super.key});
   @override
   State<PhoneLoginScreen> createState() => _PhoneLoginScreenState();
 }
@@ -29,11 +30,12 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
         verificationCompleted: (PhoneAuthCredential credential) async {
           await _auth.signInWithCredential(credential);
           await _savePhoneNumberToDatabase(phone);
+          await navigateAfterLogin(context); // 🔁 Directly navigate after auto verification
         },
         verificationFailed: (FirebaseAuthException e) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text("Failed: ${e.message}"),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Failed: ${e.message}")),
+          );
           setState(() => _isLoading = false);
         },
         codeSent: (String verificationId, int? resendToken) {
@@ -48,7 +50,6 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
         },
       );
     } catch (e) {
-      print("Error sending OTP: $e");
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text("Error: $e"),
       ));
@@ -70,23 +71,15 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
       final phone = '+91${_phoneController.text.trim()}';
       await _savePhoneNumberToDatabase(phone);
 
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text("Phone number verified and saved."),
-      ));
-
-      // ✅ Navigate to profile setup screen with uid
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ProfileSetupScreen(
-             uid: FirebaseAuth.instance.currentUser!.uid,
-          ),
-        ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Phone number verified.")),
       );
+
+      await navigateAfterLogin(context); // ✅ Check if profile exists
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Error verifying OTP: $e"),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error verifying OTP: $e")),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -95,11 +88,35 @@ class _PhoneLoginScreenState extends State<PhoneLoginScreen> {
   Future<void> _savePhoneNumberToDatabase(String phone) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
-      await _firestore.collection('users').doc(uid).set({
-        'phone': phone,
-        'uid': uid,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      final doc = await _firestore.collection('users').doc(uid).get();
+      if (!doc.exists) {
+        await _firestore.collection('users').doc(uid).set({
+          'phone': phone,
+          'uid': uid,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+    }
+  }
+
+  Future<void> navigateAfterLogin(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+
+      if (userDoc.exists && userDoc.data()?['name'] != null) {
+        // Profile is set up
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const ChatsScreen()),
+        );
+      } else {
+        // First-time login
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => ProfileSetupScreen(uid: user.uid)),
+        );
+      }
     }
   }
 
