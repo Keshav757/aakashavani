@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../firebase_services/profile_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'chats_screen.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -34,6 +35,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       return;
     }
 
+    // Sign in anonymously if user is not logged in
     if (FirebaseAuth.instance.currentUser == null) {
       await FirebaseAuth.instance.signInAnonymously();
     }
@@ -48,7 +50,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
     try {
       await service.saveUserProfile(name: name, imageUrl: imageUrl);
-      Navigator.pushReplacementNamed(context, '/chats');
+
+      // You can use either of the following based on your routing setup:
+      // Option 1: If you use named routes
+      // Navigator.pushReplacementNamed(context, '/chats');
+
+      // Option 2: If you use direct navigation (this one is safer for now)
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const ChatsScreen()),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Failed to save profile")),
