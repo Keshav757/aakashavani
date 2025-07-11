@@ -1,5 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'chats_screen.dart'; // Update the path if different
+import 'profile_setup_screen.dart'; // Update the path if different
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -32,20 +36,46 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void verifyOTP() async {
-    PhoneAuthCredential credential = PhoneAuthProvider.credential(
-      verificationId: verificationId,
-      smsCode: otpController.text,
-    );
+void verifyOTP() async {
+  PhoneAuthCredential credential = PhoneAuthProvider.credential(
+    verificationId: verificationId,
+    smsCode: otpController.text,
+  );
 
-    try {
-      await FirebaseAuth.instance.signInWithCredential(credential);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Logged in successfully!")));
-      // TODO: Navigate to Chat Screen
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Invalid OTP")));
+  try {
+    UserCredential userCredential =
+        await FirebaseAuth.instance.signInWithCredential(credential);
+
+    final uid = userCredential.user?.uid;
+
+    if (uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Something went wrong.")));
+      return;
     }
+
+    // Check if user profile exists in Firestore
+    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+
+    if (doc.exists) {
+      // ✅ Profile exists → go to chats
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const ChatsScreen()),
+      );
+    } else {
+      // 👤 New user → go to profile setup
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const ProfileSetupScreen()),
+      );
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Logged in successfully!")));
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Invalid OTP: $e")));
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
