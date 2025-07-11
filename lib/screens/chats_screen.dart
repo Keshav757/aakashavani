@@ -3,11 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../widgets/chat_tile.dart';
 import './chat_detail_screen.dart';
+
 class ChatsScreen extends StatelessWidget {
   const ChatsScreen({super.key});
+
   String _getChatId(String uid1, String uid2) {
     return uid1.compareTo(uid2) < 0 ? '$uid1\_$uid2' : '$uid2\_$uid1';
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,12 +73,12 @@ class ChatsScreen extends StatelessWidget {
                 final currentUser = authSnapshot.data!;
                 return StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance.collection('users').snapshots(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  builder: (context, userSnapshot) {
+                    if (!userSnapshot.hasData || userSnapshot.data!.docs.isEmpty) {
                       return const Center(child: Text("No users found"));
                     }
 
-                    final users = snapshot.data!.docs
+                    final users = userSnapshot.data!.docs
                         .where((doc) => doc['uid'] != currentUser.uid)
                         .toList();
 
@@ -90,35 +93,29 @@ class ChatsScreen extends StatelessWidget {
                         final receiverId = data['uid'];
                         final chatId = _getChatId(currentUser.uid, receiverId);
 
-                        return FutureBuilder<QuerySnapshot>(
-                          future: FirebaseFirestore.instance
+                        return StreamBuilder<DocumentSnapshot>(
+                          stream: FirebaseFirestore.instance
                               .collection('chats')
                               .doc(chatId)
-                              .collection('messages')
-                              .orderBy('timestamp', descending: true)
-                              .limit(1)
-                              .get(),
-                          builder: (context, messageSnapshot) {
+                              .snapshots(),
+                          builder: (context, chatSnapshot) {
                             String lastMessage = 'Say hi to $name 👋';
                             String time = '';
                             bool isUnread = false;
 
-                            if (messageSnapshot.hasData &&
-                                messageSnapshot.data!.docs.isNotEmpty) {
-                              final message = messageSnapshot.data!.docs.first;
-                              lastMessage = message['text'];
-                              final data = message.data() as Map<String, dynamic>?;
-                              bool isUnread = false;
-                              if (data != null) {
-                                isUnread = !(data.containsKey('isRead') ? data['isRead'] : false) &&
-                                          data['receiverId'] == currentUser?.uid;
-                              }
+                            if (chatSnapshot.hasData && chatSnapshot.data!.exists) {
+                              final chatData = chatSnapshot.data!.data() as Map<String, dynamic>;
 
-                              final timestamp = message['timestamp'];
+                              lastMessage = chatData['lastMessage'] ?? lastMessage;
+
+                              final timestamp = chatData['lastMessageTime'];
                               if (timestamp != null && timestamp is Timestamp) {
                                 final dateTime = timestamp.toDate();
                                 time = TimeOfDay.fromDateTime(dateTime).format(context);
                               }
+
+                              // Optional: You could enhance unread tracking using 'isRead' logic
+                              // if you store it on the last message.
                             }
 
                             return ChatTile(
@@ -132,10 +129,10 @@ class ChatsScreen extends StatelessWidget {
                                   context,
                                   MaterialPageRoute(
                                     builder: (_) => ChatDetailScreen(
-                                      userId: receiverId,
-                                      userName: name,
-                                      userImage: profileUrl,
-                                      userPhone: phone,
+                                      chatId: chatId,
+                                      receiverId: receiverId,
+                                      name: name,
+                                      profileUrl: profileUrl,
                                     ),
                                   ),
                                 );
@@ -155,7 +152,7 @@ class ChatsScreen extends StatelessWidget {
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green,
         onPressed: () {
-          // open new chat logic
+          // Add logic for starting a new chat
         },
         child: const Icon(Icons.chat),
       ),
