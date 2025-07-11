@@ -1,4 +1,3 @@
-// === UPDATED ChatDetailScreen ===
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -46,7 +45,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         'senderId': currentUser.uid,
         'receiverId': widget.userId,
         'timestamp': timestamp,
-        'isRead': false, // 👈 Add this
+        'isRead': false,
       });
 
     _messageController.clear();
@@ -97,7 +96,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
                 final messages = snapshot.data!.docs;
 
-                // ✅ Mark received messages as read
+                // Mark received messages as read
                 for (var msg in messages) {
                   final data = msg.data() as Map<String, dynamic>?;
                   if (data == null) continue;
