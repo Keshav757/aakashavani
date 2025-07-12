@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class ChatDetailScreen extends StatefulWidget {
-  final String chatId; // e.g. sorted(uid1_uid2)
+  final String chatId;
   final String receiverId;
   final String name;
   final String? profileUrl;
@@ -38,10 +38,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     await messageRef.set({
       'text': text,
       'senderId': uid,
+      'receiverId': widget.receiverId,
       'timestamp': FieldValue.serverTimestamp(),
+      'isDelivered': false,
+      'isRead': false,
     });
 
-    // Update last message info in parent chat document
     await FirebaseFirestore.instance.collection('chats').doc(widget.chatId).set({
       'participants': [uid, widget.receiverId],
       'lastMessage': text,
@@ -50,9 +52,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
     _messageController.clear();
 
-    // Scroll to bottom after slight delay
-    Future.delayed(Duration(milliseconds: 300), () {
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
     });
   }
 
@@ -92,7 +95,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
                 final messages = snapshot.data!.docs;
 
-                // Auto-scroll to bottom
+                // Update delivery & read status
+                for (var msg in messages) {
+                  final data = msg.data() as Map<String, dynamic>;
+
+                  if (data['receiverId'] == uid) {
+                    if (data['isDelivered'] == false) {
+                      msg.reference.update({'isDelivered': true});
+                    }
+
+                    // Optionally mark as read
+                    if (data['isRead'] == false) {
+                      msg.reference.update({'isRead': true});
+                    }
+                  }
+                }
+
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (_scrollController.hasClients) {
                     _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
@@ -105,7 +123,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
-                    final isMe = message['senderId'] == uid;
+                    final data = message.data() as Map<String, dynamic>;
+
+                    final isMe = data['senderId'] == uid;
+                    final text = data['text'] ?? '';
+                    final timestamp = data['timestamp'];
+                    final isDelivered = data.containsKey('isDelivered') ? data['isDelivered'] : false;
+                    final isRead = data.containsKey('isRead') ? data['isRead'] : false;
+
                     return Align(
                       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
                       child: Container(
@@ -115,7 +140,38 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           color: isMe ? Colors.blue[100] : Colors.grey[300],
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(message['text']),
+                        child: Column(
+                          crossAxisAlignment:
+                              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                          children: [
+                            Text(text),
+                            if (isMe)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    isRead
+                                        ? Icons.done_all
+                                        : isDelivered
+                                            ? Icons.done_all
+                                            : Icons.check,
+                                    size: 16,
+                                    color: isRead ? Colors.blue : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  if (timestamp != null && timestamp is Timestamp)
+                                    Text(
+                                      TimeOfDay.fromDateTime(timestamp.toDate()).format(context),
+                                      style: const TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -132,8 +188,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    onSubmitted: (_) => _sendMessage(), // 👈 Send message on Enter key
-                    textInputAction: TextInputAction.send, // Optional: Show "Send" on mobile keyboard
+                    onSubmitted: (_) => _sendMessage(),
+                    textInputAction: TextInputAction.send,
                     decoration: const InputDecoration(
                       hintText: "Type a message",
                       border: OutlineInputBorder(),
